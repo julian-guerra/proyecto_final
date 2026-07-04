@@ -43,4 +43,64 @@ Vector2 snake_nueva_comida(Juego *j) {
     return pos;
 }
 
+// Lee el teclado y actualiza la dirección que va a tomar la serpiente
+// No permite dar media vuelta (ir en la dirección contraria)
+void snake_input(Juego *j) {
+    if (IsKeyPressed(KEY_RIGHT) && j->direccion.x != -1) {
+        j->proxDir = (Vector2){ 1, 0 };
+        audio_direccion(1, 0);
+    }
+    if (IsKeyPressed(KEY_LEFT) && j->direccion.x != 1) {
+        j->proxDir = (Vector2){ -1, 0 };
+        audio_direccion(-1, 0);
+    }
+    if (IsKeyPressed(KEY_UP) && j->direccion.y != 1) {
+        j->proxDir = (Vector2){ 0, -1 };
+        audio_direccion(0, -1);
+    }
+    if (IsKeyPressed(KEY_DOWN) && j->direccion.y != -1) {
+        j->proxDir = (Vector2){ 0, 1 };
+        audio_direccion(0, 1);
+    }
+}
 
+// Mueve la serpiente un paso, revisa si comió algo o si murió
+void snake_actualizar(Juego *j) {
+    // Aplicar la dirección nueva
+    j->direccion = j->proxDir;
+
+    // Calcular la nueva posición de la cabeza
+    Vector2 nuevaCabeza;
+    nuevaCabeza.x = j->cuerpo[0].x + j->direccion.x * 25;
+    nuevaCabeza.y = j->cuerpo[0].y + j->direccion.y * 25;
+
+    // Revisar colisión con los bordes
+    if (nuevaCabeza.x < 50 || nuevaCabeza.x >= 650 ||
+        nuevaCabeza.y < 100 || nuevaCabeza.y >= 625) {
+        j->vivo = 0;
+        return;
+    }
+
+    // Revisar colisión consigo misma (ignorando la cola que va a desaparecer)
+    for (int i = 0; i < j->longitud - 1; i++) {
+        if (nuevaCabeza.x == j->cuerpo[i].x && nuevaCabeza.y == j->cuerpo[i].y) {
+            j->vivo = 0;
+            return;
+        }
+    }
+
+    // Mover el cuerpo: cada segmento toma la posición del anterior
+    for (int i = j->longitud - 1; i > 0; i--)
+        j->cuerpo[i] = j->cuerpo[i - 1];
+    j->cuerpo[0] = nuevaCabeza;
+
+    // Ver si comió la comida
+    if (nuevaCabeza.x == j->comida.x && nuevaCabeza.y == j->comida.y) {
+        audio_comida();
+        j->puntaje++;
+        // Agregar un segmento al final si hay espacio
+        if (j->longitud < MAX_SERPIENTE)
+            j->longitud++;
+        j->comida = snake_nueva_comida(j);
+    }
+}
